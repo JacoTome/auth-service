@@ -1,0 +1,22 @@
+scheme: http
+keycloak-port: 8080
+keycloak-issuer: ${scheme}://localhost:${keycloak-port}/realms/musico-realm
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+com:
+  c4-soft:
+    springaddons:
+      oidc:
+        ops:
+          - iss: ${keycloak-issuer}
+            username-claim: preferred_username
+            authorities:
+              - path: $.roles
+              - path: $.realm_access.roles
+              - path: $.resource_access.*.roles
+        resourceserver:
+          permit-all:
+            - /api/
