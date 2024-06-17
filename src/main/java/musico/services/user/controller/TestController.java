@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class TestController {
 
     @RequestMapping(path = "/prova")
-    @PreAuthorize("hasAuthority('USER')")
     public String test() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -26,6 +25,9 @@ public class TestController {
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage());
         }
-        return "Test controller is up and running";
+        return  " - Principal: " + SecurityContextHolder.getContext().getAuthentication().getPrincipal() +
+                " - Authorities: " + SecurityContextHolder.getContext().getAuthentication().getAuthorities() +
+                " - Credentials: " + SecurityContextHolder.getContext().getAuthentication().getCredentials() +
+                " - Details: " + SecurityContextHolder.getContext().getAuthentication().getDetails();
     }
 }
