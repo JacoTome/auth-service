@@ -6,16 +6,26 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Controller;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+
 
 @Slf4j
-@RestController
-@RequestMapping(path = "/test")
+@Controller
+@RequestMapping(path = "/user/test")
 @RequiredArgsConstructor
 public class TestController {
 
-    @RequestMapping(path = "/prova")
-    public String test() {
+    @GetMapping(path = "/prova")
+    @ResponseBody
+    public ResponseEntity<String> test() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Type", "application/json");
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             log.info("Principal: {}", authentication.getPrincipal());
@@ -25,9 +35,8 @@ public class TestController {
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage());
         }
-        return  " - Principal: " + SecurityContextHolder.getContext().getAuthentication().getPrincipal() +
-                " - Authorities: " + SecurityContextHolder.getContext().getAuthentication().getAuthorities() +
-                " - Credentials: " + SecurityContextHolder.getContext().getAuthentication().getCredentials() +
-                " - Details: " + SecurityContextHolder.getContext().getAuthentication().getDetails();
+        ResponseEntity<String> res = ResponseEntity.ok("Auth Ok");
+        log.info("Response: {}", res);
+        return res;
     }
 }
