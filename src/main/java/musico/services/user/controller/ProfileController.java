@@ -1,13 +1,20 @@
 package musico.services.user.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import musico.services.user.models.ProfilePicture;
 import musico.services.user.models.UserProfileDTO;
+import musico.services.user.services.StorageService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.requestreply.ReplyingKafkaTemplate;
 import org.springframework.kafka.requestreply.RequestReplyFuture;
@@ -16,6 +23,7 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.concurrent.ExecutionException;
@@ -28,10 +36,14 @@ public class ProfileController {
 
     private final KafkaTemplate<String, UserProfileDTO> kafkaTemplate;
     private final ReplyingKafkaTemplate<String, UserProfileDTO, UserProfileDTO> replyingKafkaTemplate;
+    private final StorageService storageService;
 
-    public ProfileController(@Qualifier("kafkaTemplateAuthProcess") KafkaTemplate<String, UserProfileDTO> kafkaTemplate, ReplyingKafkaTemplate<String, UserProfileDTO, UserProfileDTO> replyingKafkaTemplate) {
+    public ProfileController(@Qualifier("kafkaTemplateAuthProcess") KafkaTemplate<String, UserProfileDTO> kafkaTemplate,
+                             ReplyingKafkaTemplate<String, UserProfileDTO, UserProfileDTO> replyingKafkaTemplate,
+                             StorageService storageService) {
         this.kafkaTemplate = kafkaTemplate;
         this.replyingKafkaTemplate = replyingKafkaTemplate;
+        this.storageService = storageService;
     }
 
     @PostMapping(path = "/create")
@@ -62,4 +74,33 @@ public class ProfileController {
         return "Profile retrieved";
     }
 
+    @PostMapping(path = "/profile-picture")
+    @PreAuthorize("hasAuthority('SCOPE_user')")
+    public String uploadProfilePicture(@RequestParam("file") MultipartFile file, HttpServletRequest principal) {
+        try {
+            String id = storageService.storeProfilePicture(principal.getUserPrincipal().getName(), file);
+            log.info("Profile picture uploaded with ID: {}", id);
+        } catch (Exception e) {
+            log.error("Error uploading profile picture: {}", e.getMessage());
+            return "Error uploading profile picture";
+        }
+        // Get User ID from principal
+        return "Profile picture uploaded";
+    }
+
+    @GetMapping(path = "/profile-picture")
+    @PreAuthorize("hasAuthority('SCOPE_user')")
+    public ResponseEntity<ByteArrayResource> getProfilePicture(HttpServletRequest principal) {
+        try {
+            ProfilePicture profilePicture = storageService.getProfilePicture(principal.getUserPrincipal().getName());
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("audio/mpeg"))
+                    .headers(headers -> headers.setContentDispositionFormData("attachment", "profile.jpg"))
+                    .body(new ByteArrayResource(profilePicture.getImage()));
+
+        } catch (Exception e) {
+            log.error("Error getting profile picture: {}", e.getMessage());
+        }
+        return ResponseEntity.notFound().build();
+    }
 }
